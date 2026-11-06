@@ -443,7 +443,7 @@ function step(dt){
     S.glide=0; S.glideUsed=false; S.glideT=0;
     if (jp && !S.charging){
       S.charging=true; S.charge=0; S.bothSeen=false; S.lastDir=0; S.chargeTouch=touches.size>0;
-      S.started=true; sfxChargeStart(); $('help').style.opacity=0;
+      if (!S.started) log('start'); S.started=true; sfxChargeStart(); $('help').style.opacity=0;
     }
     if (S.charging){
       S.charge += dt;
@@ -557,7 +557,7 @@ function fell(m){
   if (S.falls===6 && !CHAMP) setTimeout(()=>{ if (!S.easy && !S.won) say("Psst. There's an easy mode. Top right. ⚙"); }, 3800);
 }
 function win(){
-  S.won=true; S.wonAt=performance.now(); sfxFanfare();
+  S.won=true; S.wonAt=performance.now(); sfxFanfare(); log('win', {cp:!!S.cpEver, cpUsed:S.cpUsed||0, easyBefore:!!CHAMP});
   setTimeout(()=>speak("You made it. Look at the state of you."), 1300);
   const st = stageOf(WEAR.falls);
   $('endb').textContent = 'The top.' + (S.cpEver ? '*' : '');
@@ -570,7 +570,7 @@ function win(){
 // ---------- easy mode: the cutscene ----------
 const CAR_X = 205, CAR_W = 60, CAR_H = 70, RISE = 6;
 function startEasy(name){
-  CHAMP = {name, at:Date.now()}; localStorage.setItem('soggy.easy', JSON.stringify(CHAMP));
+  CHAMP = {name, at:Date.now()}; localStorage.setItem('soggy.easy', JSON.stringify(CHAMP)); log('easy', {name:String(name).slice(0,60)});
   releaseInput(); S.paused=false; S.flash=0; S.dark=0;
   S.easy = {ph:'cry', t:0, name, x:110, y:GROUND_Y-PH, floor:GROUND_Y, face:1, pose:'idle', car:0, door:1, sob:-9,
     falls:S.falls, best:S.best, life:WEAR.falls, h:null, tr:null, held:false, conf:[], clap:0};
@@ -1075,8 +1075,23 @@ function render(ft){
   updateAudio(sec);
 }
 
+// ---------- telemetry: silent, anonymous ----------
+const LOG_URL = 'https://soggy-logs.soggy-ascent-backend.workers.dev'; // empty = off
+let PID = null; try { PID = localStorage.getItem('soggy.id'); if (!PID){ PID = Math.random().toString(36).slice(2,10); localStorage.setItem('soggy.id', PID); } } catch(e){}
+function log(ev, extra){
+  if (!LOG_URL) return;
+  try {
+    const d = JSON.stringify(Object.assign({id:PID, ev, falls:S.falls, life:WEAR.falls, best:+S.best.toFixed(1), t:+S.t.toFixed(1),
+      ua:navigator.userAgent.slice(0,120), ref:document.referrer.slice(0,100)}, extra||{}));
+    if (!(navigator.sendBeacon && navigator.sendBeacon(LOG_URL, d))) fetch(LOG_URL, {method:'POST', body:d, mode:'no-cors', keepalive:true});
+  } catch(e){}
+}
+let leftLogged = false;
+addEventListener('pagehide', ()=>{ if (!leftLogged){ leftLogged=true; log('leave', {won:S.won}); } });
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden' && !leftLogged){ leftLogged=true; log('leave', {won:S.won}); } else if (document.visibilityState==='visible') leftLogged=false; });
+
 // ---------- loop ----------
-reset();
+reset(); log('visit');
 let last = performance.now(), acc = 0;
 function frame(now){
   const ft = Math.min(0.1, (now-last)/1000); last = now; acc += ft;
