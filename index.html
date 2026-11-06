@@ -27,7 +27,22 @@
   #mute{position:fixed;top:10px;right:12px;font-size:26px;background:rgba(0,0,0,.35);color:#fff;border:0;border-radius:10px;padding:4px 10px;touch-action:manipulation;z-index:3}
   #end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.8);color:#fff;font-size:21px;text-align:center;z-index:2;padding:20px;box-sizing:border-box}
   #end b{font-size:42px;margin-bottom:12px}
-  @media (max-width:700px),(max-height:500px){ #say{font-size:17px} #title{font-size:20px} #end b{font-size:28px} #end{font-size:16px} #help{font-size:11px} }
+  #gear{position:fixed;top:10px;right:72px;font-size:26px;background:rgba(0,0,0,.35);color:#fff;border:0;border-radius:10px;padding:4px 10px;touch-action:manipulation;z-index:3}
+  #champ{position:fixed;top:56px;right:12px;max-width:46vw;text-align:right;color:#f2c230;font:bold 12px monospace;text-shadow:0 1px 3px #000;pointer-events:none;z-index:1}
+  #cine{position:fixed;top:20%;width:100%;text-align:center;color:#fff;font:bold 30px Georgia,serif;letter-spacing:2px;text-shadow:0 3px 10px #000;pointer-events:none;opacity:0;transition:opacity .5s;z-index:2}
+  body.cine #pad, body.cine #hud, body.cine #gear, body.cine #help, body.cine #champ{display:none}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:5}
+  .modal.on{display:flex}
+  .card{background:#f4eedc;color:#2a2218;border-radius:12px;padding:22px 22px 18px;max-width:360px;width:86%;box-sizing:border-box;text-align:center;font-size:19px;box-shadow:0 10px 40px #000}
+  .card small{font-size:14px;opacity:.75}
+  .card p{margin:10px 0}
+  .btn,.card button{font:bold 16px Georgia,serif;padding:10px 18px;margin:10px 6px 0;border-radius:8px;border:2px solid #2a2218;background:#fff;color:#2a2218;cursor:pointer;transition:transform .25s;touch-action:manipulation}
+  .card button.easy{background:#ffd6e4;border-color:#c77;margin-top:16px}
+  .card input{font:italic 20px Georgia,serif;width:80%;border:0;border-bottom:2px solid #2a2218;background:transparent;text-align:center;padding:4px;outline:none;color:#1a1a6a;-webkit-user-select:text;user-select:text}
+  #eend{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.82);color:#fff;text-align:center;z-index:4;padding:16px;box-sizing:border-box}
+  #eend b{font-size:36px;letter-spacing:3px}
+  #cert{width:min(92vw,560px);max-height:60vh;object-fit:contain;margin:12px 0 4px;border-radius:3px;box-shadow:0 6px 30px #000;-webkit-touch-callout:default}
+  @media (max-width:700px),(max-height:500px){ #say{font-size:17px} #title{font-size:20px} #end b{font-size:28px} #end{font-size:16px} #help{font-size:11px} #cine{font-size:22px} #eend b{font-size:26px} }
 </style>
 </head>
 <body>
@@ -37,8 +52,27 @@
 <div id="say"></div>
 <div id="help"></div>
 <button id="mute">🔊</button>
+<button id="gear">⚙</button>
+<div id="champ"></div>
+<div id="cine"></div>
 <div id="pad"><button id="bl">◀</button><button id="br">▶</button><button id="bj">JUMP</button></div>
-<div id="end"><b>The top.</b><div id="endtxt"></div><div style="margin-top:22px;font-size:14px;opacity:.7">press R or tap to climb again (you stay this ruined)</div></div>
+<div id="opts" class="modal"><div class="card">
+  <div style="font-weight:bold;font-size:22px">Options</div>
+  <button id="ocp">Checkpoints: OFF</button><br>
+  <small>Flags along the way. Fall, and you get put back on the last one you touched.</small><br>
+  <button id="oeasy" class="easy">Easy mode 🍼</button><br>
+  <button id="oclose">Back to suffering</button>
+</div></div>
+<div id="dlg" class="modal"><div class="card"><div id="dlgtxt"></div><div id="dlgbtn"></div></div></div>
+<div id="waiver" class="modal"><div class="card" style="text-align:left;font-size:17px">
+  <div style="font-weight:bold;letter-spacing:1px;text-align:center">SERVICE ELEVATOR<br>LIABILITY WAIVER</div>
+  <p style="text-align:center"><small>Form 7B. Building management requires this before you skip the building.</small></p>
+  <p>I, <input id="wname" maxlength="24" placeholder="full name" autocomplete="off" spellcheck="false">, confirm that I was defeated by office furniture and light rain, and I accept whatever happens next.</p>
+  <div style="text-align:center"><button id="wsign">Sign</button></div>
+</div></div>
+<div id="eend"><b>YOU WON!</b><img id="cert" alt="Certificate of Attendance">
+  <div><button class="btn" id="esave">💾 Save certificate</button><button class="btn" id="ereal">Try real mode? <small>(you won't)</small></button></div></div>
+<div id="end"><b id="endb">The top.</b><div id="endtxt"></div><div style="margin-top:22px;font-size:14px;opacity:.7">press R or tap to climb again (you stay this ruined)</div></div>
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
@@ -105,10 +139,13 @@ const SECTIONS = [
 ];
 const sectionOf = k => k>=9 ? 2 : k>=5 ? 1 : 0;
 const RECTS = [];
-SCREENS.forEach((s,k)=>s.p.forEach(([x,y,w,h,f])=>{
+SCREENS.forEach((s,k)=>s.p.forEach(([x,y,w,h,f],i)=>{
   const y0 = -(k+1)*SH + y;
-  RECTS.push({x0:x, x1:x+w, y0, y1:y0+h, k, wet:f==='w', summit:f==='s', ground:k===0&&y===560});
+  // checkpoint flag on the first (lowest) platform of screens 1-11
+  RECTS.push({x0:x, x1:x+w, y0, y1:y0+h, k, wet:f==='w', summit:f==='s', ground:k===0&&y===560, cp:i===0&&k>=1&&k<=11});
 }));
+const SUMMIT = RECTS.find(r=>r.summit), GROUND_Y = RECTS.find(r=>r.ground).y0;
+const SUMMIT_M = -SUMMIT.y0/40;
 RECTS.push({x0:-60,x1:0,y0:-SH*(NS+2),y1:0,wall:1,k:-1}, {x0:SW,x1:SW+60,y0:-SH*(NS+2),y1:0,wall:1,k:-1});
 const screenOf = y => Math.max(0, Math.min(NS-1, Math.floor(-(y+PH/2)/SH)));
 // gusts: mostly calm, with sharp periodic peaks (~1.8x) that flip open umbrellas
@@ -118,7 +155,13 @@ const gustAt = (t,k) => 0.55 + 1.1*Math.pow(Math.max(0, Math.sin(t*0.7 + k*1.7))
 if (location.search.includes('fresh')) { localStorage.removeItem('soggy.wear'); }
 const WEAR = Object.assign({falls:0, splats:[]}, JSON.parse(localStorage.getItem('soggy.wear')||'{}'));
 const saveWear = ()=>localStorage.setItem('soggy.wear', JSON.stringify(WEAR));
-const STAGES = [0,3,8,15,25,40];
+const STAGES = [0,2,5,9,14,20];
+const hurtOf = f => Math.min(1, f/20);   // continuous 0..1 redness/bruising
+// options + easy-mode shame (persist)
+const OPTS = Object.assign({cp:false}, JSON.parse(localStorage.getItem('soggy.opts')||'{}'));
+const saveOpts = ()=>localStorage.setItem('soggy.opts', JSON.stringify(OPTS));
+let CHAMP = JSON.parse(localStorage.getItem('soggy.easy')||'null');
+function updateBadge(){ $('champ').textContent = CHAMP ? `🏆 Welcome back, champion ${CHAMP.name}` : ''; }
 const stageOf = f => STAGES.reduce((s,v,i)=>f>=v?i:s, 0);
 const STAGE_LINES = [null,"You look a bit worse.","You look terrible.","Have you considered going home?",
   "Even the rain feels sorry for you.","I'm not sure you're alive anymore."];
@@ -134,10 +177,14 @@ function reset(){
     glide:0, glideUsed:false, glideT:0, stun:0, prevJump:false,
     lastFeet:-40, best:0, falls:0, t:0, started:false, won:false, wonAt:0,
     maxSec:-1, lt:5, flash:0, dark:0, flipSaid:0, walkPh:0,
+    cp:null, cpUsed:0, cpEver:OPTS.cp, tpT:0, hitT:0, pops:[], easy:null, paused:false,
   };
-  $('end').style.display='none';
+  $('end').style.display='none'; $('eend').style.display='none';
+  document.body.classList.remove('cine'); cine('');
+  if (AC) musicGain.gain.setTargetAtTime(0.2, AC.currentTime, 0.4);
+  for (const k in keys) keys[k]=false;
+  updateBadge();
 }
-reset();
 
 // ---------- input ----------
 const inp = {left:false, right:false, jump:false};
@@ -150,6 +197,9 @@ function syncInput(){
 }
 addEventListener('keydown', e=>{
   unlock();
+  if (e.target.tagName==='INPUT') return;
+  if (S.paused){ if (e.code==='Escape' && $('opts').classList.contains('on')) closeOpts(); return; }
+  if (S.easy){ e.preventDefault(); if (!e.repeat) easyPress(); return; }
   if (['Space','ArrowUp','ArrowLeft','ArrowRight','ArrowDown'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
   keys[e.code] = true;
@@ -159,7 +209,7 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>{ keys[e.code]=false; syncInput(); });
 addEventListener('blur', ()=>{ for (const k in keys) keys[k]=false; touches.clear(); syncInput(); });
-addEventListener('pointerdown', ()=>unlock());
+addEventListener('pointerdown', ()=>{ unlock(); easyPress(); });
 // touch buttons behave exactly like held keys (multi-touch: hold ▶ and JUMP together)
 for (const [id, code] of [['bl','PadL'],['br','PadR'],['bj','PadJ']]){
   const b = $(id);
@@ -176,6 +226,52 @@ $('help').textContent = isTouch
 $('mute').addEventListener('click', e=>{ e.stopPropagation(); unlock(); toggleMute(); });
 $('end').addEventListener('click', ()=>{ if (S.won && performance.now()-S.wonAt > 1500) reset(); });
 
+// ---------- options, confirmations, waiver ----------
+function releaseInput(){ for (const k in keys) keys[k]=false; touches.clear(); syncInput(); if (S.charging){ S.charging=false; sfxChargeStop(); } }
+function openOpts(){ if (S.won || S.easy) return; S.paused=true; releaseInput(); refreshOpts(); $('opts').classList.add('on'); }
+function closeOpts(){ $('opts').classList.remove('on'); S.paused=false; S.prevJump=true; }
+function refreshOpts(){ $('ocp').textContent = `Checkpoints: ${OPTS.cp?'ON':'OFF'}`; }
+$('gear').addEventListener('click', e=>{ e.stopPropagation(); unlock(); openOpts(); });
+$('oclose').addEventListener('click', e=>{ e.stopPropagation(); closeOpts(); });
+$('ocp').addEventListener('click', e=>{
+  e.stopPropagation(); OPTS.cp=!OPTS.cp; saveOpts(); refreshOpts();
+  if (OPTS.cp){ S.cpEver=true; say("Training wheels: on."); } else { S.cp=null; say("Brave. Or forgetful."); }
+});
+$('oeasy').addEventListener('click', e=>{ e.stopPropagation(); $('opts').classList.remove('on'); easyFlow(); });
+function ask(html, buttons){
+  return new Promise(res=>{
+    $('dlgtxt').innerHTML = html; const bx = $('dlgbtn'); bx.innerHTML='';
+    for (const b of buttons){
+      const el = document.createElement('button'); el.textContent = b.t;
+      el.style.transform = `scale(${b.s||1})`;
+      el.addEventListener('click', e=>{ e.stopPropagation(); $('dlg').classList.remove('on'); res(b.v); });
+      bx.appendChild(el);
+    }
+    $('dlg').classList.add('on');
+  });
+}
+function waiver(){
+  return new Promise(res=>{
+    const w = $('waiver'), n = $('wname');
+    n.value = CHAMP ? CHAMP.name : ''; w.classList.add('on'); setTimeout(()=>n.focus(), 60);
+    const done = ()=>{
+      const v = n.value.trim().slice(0,24);
+      if (!v){ n.placeholder='a name. any name.'; n.focus(); return; }
+      w.classList.remove('on'); n.blur(); res(v);
+    };
+    $('wsign').onclick = e=>{ e.stopPropagation(); done(); };
+    n.onkeydown = e=>{ e.stopPropagation(); if (e.key==='Enter') done(); };
+  });
+}
+async function easyFlow(){
+  const back = ()=>{ S.paused=false; S.prevJump=true; say(pick(["Good. Suffer properly.","Character development.","That's the spirit. Probably."])); };
+  if (!await ask('Easy mode?<br><small>Are you sure?</small>', [{t:'No',v:0},{t:'Yes',v:1}])) return back();
+  if (!await ask('Really sure?<br><small>There is no shame in trying again.<br>(There is some.)</small>',
+    [{t:"No, I'll climb",v:0,s:1.25},{t:'Yes',v:1,s:0.75}])) return back();
+  if (!await ask('Okay.<br>Your mom will be told.', [{t:'Never mind',v:0,s:1.6},{t:'Fine',v:1,s:0.5}])) return back();
+  startEasy(await waiver());
+}
+
 // ---------- narrator ----------
 const FALL_LINES = [
   "Down you go.","That was a whole floor.","Gravity: still undefeated.","The umbrella was right there.",
@@ -187,6 +283,9 @@ const FLIP_LINES = ["Umbrellas are not rated for this.","Inside out. Like your d
 let sayT = 0, titleT = 0;
 function say(t){ $('say').textContent=t; $('say').style.opacity=1; sayT=3.4; }
 function title(t){ $('title').textContent=t; $('title').style.opacity=1; titleT=2.6; }
+function cine(t){ if (t) $('cine').textContent=t; $('cine').style.opacity = t ? 1 : 0; }
+const OUCH = ["OW","OUCH","+1 BRUISE","−DIGNITY","OOF"];
+const CP_LINES = ["Back to the flag. Like nothing happened.","Rescued. Again.","The flag believes in you. Nobody else does.","Teleported. Shamefully."];
 const pick = a => a[(Math.random()*a.length)|0];
 
 // ---------- audio (synthesized) ----------
@@ -255,6 +354,32 @@ function sfxTrombone(){
   tone({f:330,f2:300,type:'sawtooth',t:1.4,vol:0.2,when:1.24,attack:0.03,vib:12,filter:['lowpass',1100]});
 }
 function sfxFanfare(){ if (AC) [0,4,7,12,11,12].forEach((s,i)=>tone({f:262*2**(s/12),type:'square',t:i===5?1.2:0.22,vol:0.12,when:i*0.18,detune:rnd(-60,60),vib:i===5?9:0})); }
+function sfxChime(){ if (AC) [0,7].forEach((s,i)=>tone({f:880*2**(s/12),t:0.35,vol:0.15,when:i*0.09})); }
+function sfxPoof(){ if (!AC) return; noise({t:0.35,vol:0.35,freq:400,f2:3000,type:'bandpass',q:1.5}); tone({f:300,f2:1200,t:0.3,vol:0.12}); }
+function sfxDing(){ if (AC) [1318,1046].forEach((f,i)=>tone({f,t:1.1,vol:0.2,when:i*0.32})); }
+function sfxSob(){ if (AC) for (let i=0;i<3;i++) tone({f:560-i*30,f2:380-i*20,type:'sawtooth',t:0.28,vol:0.13,when:i*0.32,attack:0.04,vib:30,filter:['lowpass',1000]}); }
+function sfxClap(){ if (AC) noise({t:0.06,vol:0.45,freq:1600,type:'bandpass',q:1.4}); }
+function sfxThud(){ if (!AC) return; noise({t:0.25,vol:0.5,freq:300,f2:80}); tone({f:110,f2:45,t:0.25,vol:0.4}); }
+function sfxClatter(){ if (AC) for (let i=0;i<4;i++) tone({f:rnd(1300,1900),f2:rnd(700,1000),type:'triangle',t:0.07,vol:0.15,when:i*rnd(0.07,0.12)}); }
+function sfxMuzak(){ // elevator bossa, ~7 s
+  if (!AC) return;
+  const mel = [[76,.5],[79,.5],[81,1],[79,.5],[76,.5],[74,1],[72,.5],[74,.5],[76,1],[79,.5],[77,.5],[76,1],[74,1.5]];
+  const bt = 0.36; let w = 0;
+  for (let rep=0; rep<2; rep++) for (const [m,d] of mel){ tone({f:440*2**((m-69)/12), t:d*bt*0.9, vol:0.13, when:w, attack:0.02, vib:3}); w += d*bt; }
+  [[48,52,55,59],[53,57,60,64],[50,53,57,60],[55,59,62,65]].forEach((ch,i)=>{
+    for (let r=0;r<2;r++) ch.forEach(m=>tone({f:440*2**((m-69)/12), type:'triangle', t:0.75, vol:0.035, when:i*1.71+r*0.86, attack:0.03}));
+  });
+}
+function sfxCheer(){ // an enthusiastic crowd, for an achievement that did not happen
+  if (!AC) return;
+  const t0 = AC.currentTime, s = AC.createBufferSource(), bq = AC.createBiquadFilter(), g = AC.createGain();
+  s.buffer=noiseBuf; s.loop=true; bq.type='bandpass'; bq.frequency.value=1100; bq.Q.value=0.7;
+  g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(0.3,t0+0.4); g.gain.setValueAtTime(0.3,t0+2); g.gain.exponentialRampToValueAtTime(0.001,t0+3.4);
+  s.connect(bq); bq.connect(g); g.connect(sfxGain); s.start(t0); s.stop(t0+3.5);
+  for (let i=0;i<45;i++) noise({t:0.04,vol:rnd(.12,.3),freq:rnd(1200,2300),type:'bandpass',q:1.5,when:rnd(0,2.8)});
+  for (let i=0;i<7;i++){ const f=rnd(280,520); tone({f,f2:f*rnd(1.4,1.9),type:'triangle',t:rnd(.4,.7),vol:.06,when:rnd(.1,1.6),vib:22,filter:['lowpass',2200]}); }
+  sfxFanfare();
+}
 function speak(t){
   if (muted || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
@@ -267,7 +392,7 @@ function toggleMute(){
 }
 function updateAudio(sec){
   if (!AC) return;
-  const falling = S.p.vy > 800 && !S.onGround && S.glide!==1;
+  const falling = !S.easy && S.p.vy > 800 && !S.onGround && S.glide!==1;
   whistleG.gain.setTargetAtTime(falling ? 0.06 : 0, AC.currentTime, 0.05);
   whistle.frequency.setTargetAtTime(Math.max(300, 2600 - S.p.vy*1.4), AC.currentTime, 0.05);
   musicBend += ((falling ? -500 : 0) - musicBend) * 0.05;
@@ -308,6 +433,8 @@ function step(dt){
   const P = S.p, jp = inp.jump && !S.prevJump; S.prevJump = inp.jump;
   const k = screenOf(P.y), wb = SCREENS[k].wind, gust = gustAt(T,k);
   if (S.started && !S.won) S.t += dt;
+  if (S.hitT > 0) S.hitT -= dt;
+  if (S.tpT > 0){ S.tpT -= dt; if (S.tpT <= 0 && S.cp) teleport(); }
 
   if (S.stun > 0){
     S.stun -= dt;
@@ -405,10 +532,20 @@ function onLand(r, impact){
     stains.push({x:P.x+PW/2, y:r.y0, r:rnd(8,15)});
     saveWear();
   } else sfxLand(impact);
+  if (OPTS.cp && r.cp && (!S.cp || r.y0 < S.cp.y0)){ S.cp = r; sfxChime(); }
   const feet = P.y+PH;
-  if (feet - S.lastFeet > FALL_PX) fell((feet-S.lastFeet)/PX_PER_M);
+  if (feet - S.lastFeet > FALL_PX){
+    fell((feet-S.lastFeet)/PX_PER_M);
+    if (OPTS.cp && S.cp && r.y0 > S.cp.y0 + 1) S.tpT = 0.9;
+  }
   S.lastFeet = feet;
   if (r.summit && !S.won) win();
+}
+function teleport(){
+  const P = S.p, r = S.cp;
+  P.x = (r.x0+r.x1)/2 - PW/2; P.y = r.y0 - PH; P.vx = P.vy = 0;
+  S.onGround = true; S.groundRect = r; S.lastFeet = r.y0; S.stun = 0; S.glide = 0;
+  S.cpUsed++; sfxPoof(); say(pick(CP_LINES));
 }
 function fell(m){
   const before = stageOf(WEAR.falls);
@@ -416,14 +553,130 @@ function fell(m){
   const after = stageOf(WEAR.falls);
   const line = after>before ? STAGE_LINES[after] : pick(FALL_LINES);
   say(`${line}  (−${m.toFixed(1)} m)`); sfxTrombone(); setTimeout(()=>speak(line), 400);
+  S.hitT = 1.4; S.pops.push({x:S.p.x+PW/2, y:S.p.y-6, t:1.3, txt:pick(OUCH)});
+  if (S.falls===6 && !CHAMP) setTimeout(()=>{ if (!S.easy && !S.won) say("Psst. There's an easy mode. Top right. ⚙"); }, 3800);
 }
 function win(){
   S.won=true; S.wonAt=performance.now(); sfxFanfare();
   setTimeout(()=>speak("You made it. Look at the state of you."), 1300);
   const st = stageOf(WEAR.falls);
-  $('endtxt').innerHTML = `Time: ${fmt(S.t)}<br>Falls this climb: ${S.falls}<br>Falls, lifetime: ${WEAR.falls}<br><br>Condition: <i>${CONDITION[st]}</i>`;
+  $('endb').textContent = 'The top.' + (S.cpEver ? '*' : '');
+  let extra = S.cpEver ? `<br><br><small>*with training wheels. Checkpoint rescues: ${S.cpUsed}</small>` : '';
+  if (CHAMP){ extra += `<br><br>Your participation trophy has been confiscated.<br>You earned the real thing.`; localStorage.removeItem('soggy.easy'); CHAMP=null; updateBadge(); }
+  $('endtxt').innerHTML = `Time: ${fmt(S.t)}<br>Falls this climb: ${S.falls}<br>Falls, lifetime: ${WEAR.falls}<br><br>Condition: <i>${CONDITION[st]}</i>${extra}`;
   $('end').style.display='flex';
 }
+
+// ---------- easy mode: the cutscene ----------
+const CAR_X = 205, CAR_W = 60, CAR_H = 70, RISE = 6;
+function startEasy(name){
+  CHAMP = {name, at:Date.now()}; localStorage.setItem('soggy.easy', JSON.stringify(CHAMP));
+  releaseInput(); S.paused=false; S.flash=0; S.dark=0;
+  S.easy = {ph:'cry', t:0, name, x:110, y:GROUND_Y-PH, floor:GROUND_Y, face:1, pose:'idle', car:0, door:1, sob:-9,
+    falls:S.falls, best:S.best, life:WEAR.falls, h:null, tr:null, held:false, conf:[], clap:0};
+  document.body.classList.add('cine'); $('say').style.opacity=0; $('title').style.opacity=0;
+  if (AC) musicGain.gain.setTargetAtTime(0, AC.currentTime, 0.4);
+  setTimeout(()=>{ say("Oh no. Are you crying? In front of everyone?"); speak("Oh no. Are you crying?"); }, 300);
+}
+function easyPress(){
+  const E = S.easy; if (!E || E.ph!=='cry' || E.t<1.2) return;
+  cine(''); sfxDing(); E.car=1; E.ph='open'; E.t=0;
+}
+function easyUpdate(ft){
+  const E = S.easy; E.t += ft; const t = E.t, go = ph=>{ E.ph=ph; E.t=0; };
+  switch (E.ph){
+    case 'cry':
+      if (t-E.sob > 1.6){ E.sob=t; sfxSob(); }
+      if (t>1.2 && !E.prompt){ E.prompt=1; cine('press any button'); }
+      break;
+    case 'open': E.door = Math.max(0, 1-t/0.6); if (t>0.8) go('walkin'); break;
+    case 'walkin':
+      E.pose='walk'; E.x = Math.min(225, E.x+90*ft);
+      if (E.x>=225){ E.pose='idle'; go('close'); }
+      break;
+    case 'close':
+      E.door = Math.min(1, t/0.6);
+      if (t>0.8){ go('rise'); sfxMuzak(); say("Elevator music. You've earned it."); }
+      break;
+    case 'rise': {
+      const u = Math.min(1, t/RISE), e = u<.5 ? 2*u*u : 1-2*(1-u)*(1-u);
+      E.floor = GROUND_Y + (SUMMIT.y0-GROUND_Y)*e; E.y = E.floor-PH;
+      if (t>3.2 && !E.l1){ E.l1=1; say("This is the part you couldn't do."); }
+      if (u>=1){ sfxDing(); go('out'); }
+      break;
+    }
+    case 'out':
+      E.door = Math.max(0, 1-t/0.6);
+      if (t>0.7){ E.pose='walk'; E.x = Math.min(290, E.x+70*ft); if (E.x>=290){ E.pose='idle'; go('deliver'); say("Someone from HR is bringing you something."); } }
+      break;
+    case 'deliver': deliver(t); break;
+    case 'won':
+      if (!E.w){
+        E.w=1; cine('YOU WON!'); sfxCheer(); setTimeout(()=>speak(`Congratulations, ${E.name}. You won.`), 1500);
+        const cols = ['#f2c230','#e94b6a','#4bb3e9','#6be96b','#fff'];
+        for (let i=0;i<16;i++) E.conf.push({x:rnd(180,460), y:SUMMIT.y0-rnd(160,320), vy:rnd(35,70), a:rnd(0,6), c:pick(cols)});
+      }
+      E.h.clapping = true; if (t-E.clap > 0.7){ E.clap=t; sfxClap(); }
+      if (t>4.5 && !E.cert){ E.cert=1; showEasyEnd(); }
+      break;
+  }
+  for (const p of E.conf){ p.y += p.vy*ft; p.a += ft*4; }
+}
+function deliver(t){
+  const E = S.easy, f = SUMMIT.y0, lerp = (a,b,u)=>a+(b-a)*Math.max(0,Math.min(1,u));
+  const T1=1.625, T2=2.4, T3=3.4, T4=3.9, T5=4.73, T6=5.0, T7=5.75, T8=6.3;
+  const handY = f-39, me = [E.x+PW/2+12, E.y+PH-28];
+  let hx=450, rot=0, walking=false, armsUp=false, tr;
+  if (t<T1){ hx=450-40*t; walking=armsUp=true; tr=[hx,handY]; }
+  else if (t<T2){
+    hx=385; rot=-Math.PI/2*Math.min(1,(t-T1)/0.35);
+    const v=Math.min(1,(t-T1)/0.6); tr=[385-40*v, handY+39*v-50*Math.sin(Math.PI*v)];
+    if (t>T1+0.35 && !E.s1){ E.s1=1; sfxThud(); }
+    if (v>=1 && !E.s2){ E.s2=1; sfxClatter(); setTimeout(()=>say("Careful. It's plastic."), 300); }
+  }
+  else if (t<T3){ hx=385; rot=-Math.PI/2; tr=[345,f]; }
+  else if (t<T4){ hx=385; rot=-Math.PI/2*(1-(t-T3)/0.5); tr=[345,f]; }
+  else if (t<T5){ hx=385-40*(t-T4); walking=true; tr=[345,f]; }
+  else if (t<T6){ hx=352; armsUp=true; const u=(t-T5)/(T6-T5); tr=[lerp(345,352,u), lerp(f,handY,u)]; }
+  else if (t<T7){ hx=352-40*(t-T6); walking=armsUp=true; tr=[hx,handY]; }
+  else if (t<T8){ hx=322; const u=(t-T7)/(T8-T7); armsUp=u<0.6; tr=[lerp(322,me[0],u), lerp(handY,me[1],u)]; }
+  else { E.held=true; E.pose='rise'; E.h={x:322, rot:0, walking:false, armsUp:false}; E.tr=me; go2('won'); return; }
+  E.h = {x:hx, rot, walking, armsUp}; E.tr = tr;
+  function go2(ph){ E.ph=ph; E.t=0; }
+}
+function makeCert(E){
+  const W=900, H=620, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle='#f6efd9'; g.fillRect(0,0,W,H);
+  g.strokeStyle='#b8902f'; g.lineWidth=14; g.strokeRect(22,22,W-44,H-44);
+  g.strokeStyle='#7a5a1a'; g.lineWidth=2; g.strokeRect(44,44,W-88,H-88);
+  g.textAlign='center'; g.fillStyle='#3a2a10';
+  g.font='bold 50px Georgia, serif'; g.fillText('CERTIFICATE', W/2, 120);
+  g.font='italic 28px Georgia, serif'; g.fillText('of Attendance', W/2, 160);
+  g.font='21px Georgia, serif'; g.fillText('This certifies that', W/2, 222);
+  let fs=56; do { g.font=`italic bold ${fs}px Georgia, serif`; fs-=2; } while (g.measureText(E.name).width > 680 && fs>20);
+  g.fillStyle='#1a1a6a'; g.fillText(E.name, W/2, 292);
+  g.strokeStyle='#3a2a10'; g.lineWidth=1.5; g.beginPath(); g.moveTo(170,308); g.lineTo(730,308); g.stroke();
+  g.fillStyle='#3a2a10'; g.font='21px Georgia, serif';
+  g.fillText('showed up to Soggy Ascent, and then took the elevator.', W/2, 352);
+  g.fillText(`Highest point reached unassisted: ${E.best.toFixed(1)} m of ${SUMMIT_M.toFixed(1)} m`, W/2, 394);
+  g.fillText(`Falls before giving up: ${E.falls}    ·    Lifetime falls: ${E.life}`, W/2, 428);
+  g.font='italic 18px Georgia, serif'; g.textAlign='left';
+  g.fillText(new Date().toLocaleDateString(), 110, 500); g.fillRect(100,512,200,1.5); g.fillText('Date', 110, 540);
+  g.textAlign='right'; g.font='italic 30px "Brush Script MT", cursive'; g.fillText('The Management', 800, 505);
+  g.fillRect(600,512,200,1.5); g.font='italic 18px Georgia, serif'; g.fillText('The Management', 800, 540);
+  drawTrophy(g, W/2, 560, 5.5);
+  g.save(); g.translate(690, 200); g.rotate(-0.22); g.globalAlpha=0.82;
+  g.strokeStyle='#c0283c'; g.lineWidth=5; g.beginPath(); g.roundRect(-120,-38,240,76,10); g.stroke();
+  g.fillStyle='#c0283c'; g.textAlign='center'; g.font='bold 34px Georgia, serif'; g.fillText('EASY MODE ✓', 0, 12);
+  g.restore();
+  return c.toDataURL('image/png');
+}
+function showEasyEnd(){
+  cine(''); const url = makeCert(S.easy);
+  $('cert').src = url; $('eend').style.display='flex';
+  $('esave').onclick = e=>{ e.stopPropagation(); const a=document.createElement('a'); a.href=url; a.download='certificate-of-attendance.png'; a.click(); };
+}
+$('ereal').addEventListener('click', e=>{ e.stopPropagation(); reset(); say("Back to the bottom. Champion."); });
 const fmt = t=>`${(t/60|0)}:${String((t%60).toFixed(1)).padStart(4,'0')}`;
 
 // ---------- rendering ----------
@@ -517,10 +770,12 @@ const OUT = '#2a1d14', SKIN = '#f6d7b5', CANOPY = '#c0283c', CANOPY_D = '#8e1a2b
 function drawPlayer(c, s, wear, t){
   const st = stageOf(wear.falls), p = s.pose;
   const cx = s.x+PW/2, by = s.y+PH;
-  const dirt = [0,0.1,0.25,0.4,0.6,0.7][st];
-  const coat = lerpColor('f5c518','6b4f2a',dirt), coatD = lerpColor('c99a0e','4a3519',dirt);
+  const hurt = hurtOf(wear.falls), dirt = hurt*0.75;
+  const coat = lerpColor('f5c518','8c3b24',dirt), coatD = lerpColor('c99a0e','5e2414',dirt);
+  const skin = lerpColor('f6d7b5','eb8270',hurt*0.85);
   const walkA = p==='walk' ? Math.sin(t*11) : 0;
   c.save(); c.translate(cx, by);
+  if (s.cry) c.translate(Math.sin(t*26)*0.6, 0);
   if (s.ground){ c.fillStyle='rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0,1,11,2.5,0,0,7); c.fill(); }
   let sx=1, sy=1, bob=0;
   if (p==='charge'){ sx=1+0.16*s.charge; sy=1-0.26*s.charge; }
@@ -550,6 +805,8 @@ function drawPlayer(c, s, wear, t){
     c.fillStyle='#c8323a'; c.strokeStyle=OUT; c.lineWidth=1.1;
     c.beginPath(); c.roundRect(lx-3,-6,7,6,[2,2.5,1.5,1.5]); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(lx-2,-5,1.2,3);
+    if (hurt>0.2){ c.fillStyle='#e0303a'; c.fillRect(lx-1.6,-9.5,3,1.1); }        // scraped knees
+    if (hurt>0.55){ c.fillStyle='#e0303a'; c.fillRect(lx-0.6,-8,1.1,2.2); }
   }
   // coat
   const flap = p==='fall' ? Math.sin(t*30)*1.5 : p==='rise' ? -1 : 0;
@@ -570,12 +827,32 @@ function drawPlayer(c, s, wear, t){
   // head: hood + face
   const hx = 1+hunch, hy = -31+hunch*2;
   c.fillStyle=coat; c.strokeStyle=OUT; c.lineWidth=1.3; c.beginPath(); c.arc(hx,hy,8.5,0,7); c.fill(); c.stroke();
-  c.fillStyle=SKIN; c.lineWidth=0.9; c.beginPath(); c.ellipse(hx+2.3,hy+0.9,5.8,6,0,0,7); c.fill(); c.stroke();
+  c.fillStyle=skin; c.lineWidth=0.9; c.beginPath(); c.ellipse(hx+2.3,hy+0.9,5.8,6,0,0,7); c.fill(); c.stroke();
   c.fillStyle='#5a3a22'; c.beginPath(); c.ellipse(hx+2.6,hy-4.2,5,2,0,0,7); c.fill();
+  // redness: flushed cheeks, bruises, a swelling nose; all scale with lifetime falls
+  c.fillStyle=`rgba(235,50,55,${0.3+0.45*hurt})`; c.beginPath(); c.arc(hx+6.6,hy+3.2,1.3+1.3*hurt,0,7); c.arc(hx-1,hy+3.2,1.1+1.1*hurt,0,7); c.fill();
+  const BR = [[hx+6.6,hy+3.9,1.6],[hx-1.4,hy+3.6,1.4],[hx+5.4,hy+5.6,1.1],[hx-0.2,hy+5.4,1.1]];
+  for (let i=0, n=Math.min(4,Math.floor(wear.falls/2)); i<n; i++){ const [bx,byy,br]=BR[i]; c.fillStyle='rgba(140,25,70,.6)'; c.beginPath(); c.ellipse(bx,byy,br*1.2,br,0.3,0,7); c.fill(); }
+  if (hurt>0.05){
+    c.fillStyle='#dd2f38'; c.beginPath(); c.arc(hx+7.6,hy+1.8,0.7+1.6*hurt,0,7); c.fill();
+    c.fillStyle='rgba(255,255,255,.6)'; c.fillRect(hx+7.4,hy+0.9,0.7,0.7);
+  }
   if (st>=5){ c.strokeStyle='#f3f1ea'; c.lineWidth=2.4; c.beginPath(); c.moveTo(hx-8,hy-2); c.lineTo(hx+8,hy-6); c.stroke(); }
   else if (st>=3){ c.save(); c.translate(hx+6,hy-2.5); c.rotate(0.5); c.fillStyle='#e9c98f'; c.fillRect(-3,-1.1,6,2.2); c.fillRect(-1.1,-3,2.2,6); c.restore(); }
   // eyes
   const E = [[hx+0.5,hy+0.4,1],[hx+4.5,hy+0.4,-1]];
+  if (wear.falls>=4 && !s.cry){ c.strokeStyle='rgba(110,25,75,.75)'; c.lineWidth=1.1; c.beginPath(); c.arc(E[1][0],E[1][1],2.7,0,7); c.stroke(); } // black eye
+  if (s.cry){
+    for (const [ex,ey,d] of E){
+      c.strokeStyle=OUT; c.lineWidth=1; c.beginPath(); c.moveTo(ex-1.5*d,ey-1.3); c.lineTo(ex+1*d,ey); c.lineTo(ex-1.5*d,ey+1.3); c.stroke();
+      c.strokeStyle='#4a2f1c'; c.lineWidth=0.9; c.beginPath(); c.moveTo(ex-1.5*d,ey-2.6); c.lineTo(ex+1.5*d,ey-4.6); c.stroke();
+      c.fillStyle='rgba(120,195,255,.95)';
+      for (let i=0;i<6;i++){ const ph=(t*2.6+i/6)%1; c.beginPath(); c.arc(ex-d*(1+ph*8), ey+0.5-3.5*ph+18*ph*ph, 0.9, 0, 7); c.fill(); }
+    }
+    const mx = hx+2.6, my = hy+4.6, o = Math.abs(Math.sin(t*6));
+    c.fillStyle='#4a1f24'; c.beginPath(); c.ellipse(mx,my,2.2,1.5+0.8*o,0,0,7); c.fill();
+    c.fillStyle='#d55'; c.beginPath(); c.ellipse(mx,my+0.8+0.5*o,1.2,0.6,0,0,7); c.fill();
+  } else {
   const blink = (t % 3.3) < 0.12 && st<5;
   for (const [ex,ey] of E){
     if (st>=5){ c.fillStyle='#3a2a3a'; c.beginPath(); c.ellipse(ex,ey,1.6,1.9,0,0,7); c.fill(); continue; }
@@ -590,7 +867,6 @@ function drawPlayer(c, s, wear, t){
   c.strokeStyle='#4a2f1c'; c.lineWidth=0.9;
   for (const [ex,ey,d] of E){ c.beginPath(); c.moveTo(ex-1.5*d, ey-2.9); c.lineTo(ex+1.5*d, ey-2.9-bt*1.6); c.stroke(); }
   if (st>=2){ c.strokeStyle='rgba(90,60,100,.55)'; c.lineWidth=0.7; for (const [ex,ey] of E){ c.beginPath(); c.arc(ex,ey+2.4,1.3,0.3,Math.PI-0.3); c.stroke(); } }
-  if (st<=1){ c.fillStyle='rgba(240,110,110,.45)'; c.beginPath(); c.arc(hx+6.6,hy+3.2,1.3,0,7); c.arc(hx-1,hy+3.2,1.1,0,7); c.fill(); }
   // mouth
   const mx = hx+2.6, my = hy+4.4;
   c.strokeStyle=OUT; c.lineWidth=0.9; c.beginPath();
@@ -604,6 +880,7 @@ function drawPlayer(c, s, wear, t){
     c.strokeStyle='rgba(123,208,255,.9)'; c.lineWidth=1.1;
     for (const [ex,ey] of E){ c.beginPath(); c.moveTo(ex,ey+2); c.lineTo(ex+0.3,ey+5.5+Math.sin(t*4+ex)*0.6); c.stroke(); }
   }
+  } // end normal face
 
   // front arm: outline, sleeve, mitten
   const H = s.glide ? [12,-34] : p==='charge' ? [5,-13] : p==='rise' ? [12,-30] : p==='fall' ? [13+Math.sin(t*20)*2,-27+Math.cos(t*17)*2]
@@ -611,8 +888,13 @@ function drawPlayer(c, s, wear, t){
   if (s.glide) drawOpenUmbrella(c, H, s.glide===2, st);
   c.lineWidth=4.6; c.strokeStyle=OUT; c.beginPath(); c.moveTo(4,-22); c.lineTo(H[0],H[1]); c.stroke();
   c.lineWidth=3; c.strokeStyle=coat; c.stroke();
-  c.fillStyle=SKIN; c.strokeStyle=OUT; c.lineWidth=0.8; c.beginPath(); c.arc(H[0],H[1],1.7,0,7); c.fill(); c.stroke();
+  c.fillStyle=skin; c.strokeStyle=OUT; c.lineWidth=0.8; c.beginPath(); c.arc(H[0],H[1],1.7,0,7); c.fill(); c.stroke();
   c.restore();
+
+  // just fell: stars circle the head
+  if (s.hit>0){
+    for (let i=0;i<3;i++){ const a=t*6+i*2.1; drawStar(c, cx+Math.cos(a)*10, s.y-6+Math.sin(a)*3, 2.6, i%2?'#ffd23a':'#ff3b3b'); }
+  }
 
   // things that follow you around
   if (st>=4 && (p==='idle'||p==='walk')){
@@ -626,6 +908,65 @@ function drawPlayer(c, s, wear, t){
     c.fillStyle='#111';
     for (let i=0;i<3;i++){ const a=t*(3+i)+i*2; c.fillRect(cx+Math.cos(a)*(14+i*3)-1, s.y+2+Math.sin(a*1.3)*10-1, 2, 2); }
   }
+}
+function drawStar(c, x, y, r, col){
+  c.fillStyle=col; c.beginPath();
+  for (let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.45:r; c.lineTo(x+Math.cos(a)*rr, y+Math.sin(a)*rr); }
+  c.closePath(); c.fill();
+}
+function drawTrophy(c, x, y, s){ // (x,y) = bottom centre. Gold-coloured plastic.
+  c.save(); c.translate(x,y); c.scale(s,s);
+  c.fillStyle='#6b4a2a'; c.fillRect(-5,-3,10,3);
+  c.fillStyle='#e0b23a'; c.fillRect(-1.2,-7.5,2.4,4.5);
+  c.beginPath(); c.moveTo(-5,-15.5); c.lineTo(5,-15.5); c.quadraticCurveTo(5,-7,0,-7); c.quadraticCurveTo(-5,-7,-5,-15.5); c.fill();
+  c.strokeStyle='#e0b23a'; c.lineWidth=1.2;
+  c.beginPath(); c.arc(-5,-12.5,2,Math.PI*0.5,Math.PI*1.5); c.stroke();
+  c.beginPath(); c.arc(5,-12.5,2,-Math.PI*0.5,Math.PI*0.5); c.stroke();
+  c.fillStyle='rgba(255,255,255,.55)'; c.fillRect(-3.2,-14.5,1,4);
+  c.restore();
+}
+// someone from HR: grey suit, lanyard, unearned enthusiasm
+function drawHelper(c, h, fy, t){
+  c.save(); c.translate(h.x, fy); c.rotate(h.rot); c.lineJoin='round'; c.lineCap='round';
+  const wa = h.walking ? Math.sin(t*7) : 0;
+  c.fillStyle='#2b2d38'; c.fillRect(-4+wa*1.5,-10,3,9); c.fillRect(1-wa*1.5,-10,3,9);
+  c.fillStyle='#111'; c.fillRect(-5.5+wa*1.5,-1.6,5,1.6); c.fillRect(-0.5-wa*1.5,-1.6,5,1.6);
+  c.fillStyle='#5d6270'; c.strokeStyle=OUT; c.lineWidth=1.1; c.beginPath(); c.roundRect(-6,-24,12,15,3); c.fill(); c.stroke();
+  c.fillStyle='#fff'; c.beginPath(); c.moveTo(-2.2,-24); c.lineTo(2.2,-24); c.lineTo(0,-19); c.fill();
+  c.fillStyle='#c0283c'; c.beginPath(); c.moveTo(-0.9,-22.5); c.lineTo(0.9,-22.5); c.lineTo(1.3,-15); c.lineTo(0,-13.5); c.lineTo(-1.3,-15); c.fill();
+  c.strokeStyle='#3a7bd5'; c.lineWidth=0.7; c.beginPath(); c.moveTo(-3.5,-24); c.lineTo(-3.6,-17.5); c.lineTo(-1.5,-24); c.stroke();
+  c.fillStyle='#fff'; c.fillRect(-5,-17.5,3,3.5);
+  c.fillStyle='#f0c9a0'; c.strokeStyle=OUT; c.lineWidth=1.1; c.beginPath(); c.arc(0,-30,6,0,7); c.fill(); c.stroke();
+  c.fillStyle='#888'; c.fillRect(-6,-31.5,1.8,3.5); c.fillRect(4.2,-31.5,1.8,3.5);
+  c.strokeStyle=OUT; c.lineWidth=0.7; c.beginPath(); c.arc(-2.3,-30.5,1.5,0,7); c.moveTo(3.8,-30.5); c.arc(2.3,-30.5,1.5,0,7);
+  c.moveTo(-0.8,-30.5); c.lineTo(0.8,-30.5); c.stroke();
+  c.lineWidth=0.9; c.beginPath(); c.arc(0,-28,2.2,0.3,Math.PI-0.3); c.stroke();
+  let hands;
+  if (h.armsUp) hands = [[-4,-38],[4,-38]];
+  else if (h.clapping){ const k=(Math.sin(t*9)+1)/2; hands = [[-1.2-k*4,-21],[1.2+k*4,-21]]; }
+  else hands = [[-7,-12+wa],[7,-12-wa]];
+  hands.forEach(([hx,hy],i)=>{
+    c.strokeStyle=OUT; c.lineWidth=3.6; c.beginPath(); c.moveTo(i?5:-5,-22); c.lineTo(hx,hy); c.stroke();
+    c.strokeStyle='#5d6270'; c.lineWidth=2.2; c.stroke();
+    c.fillStyle='#f0c9a0'; c.beginPath(); c.arc(hx,hy,1.4,0,7); c.fill();
+  });
+  c.restore();
+}
+function drawCar(c, x, floor, door, part){
+  const top = floor-CAR_H;
+  if (part==='back'){
+    c.strokeStyle='#222'; c.lineWidth=2; c.beginPath(); c.moveTo(x+CAR_W/2, top); c.lineTo(x+CAR_W/2, -20); c.stroke();
+    c.fillStyle='#4a4f5a'; c.fillRect(x,top,CAR_W,CAR_H);
+    c.fillStyle='#5a606c'; c.fillRect(x+5,top+6,CAR_W-10,CAR_H-12);
+    c.fillStyle='#8a6a40'; c.fillRect(x,floor-3,CAR_W,3);
+    return;
+  }
+  const dw = CAR_W/2*door;
+  c.fillStyle='#a3a9b3'; c.fillRect(x,top,dw,CAR_H); c.fillRect(x+CAR_W-dw,top,dw,CAR_H);
+  c.fillStyle='rgba(0,0,0,.25)'; if (door>0.05){ c.fillRect(x+dw-1,top,1,CAR_H); c.fillRect(x+CAR_W-dw,top,1,CAR_H); }
+  c.strokeStyle='#2a2d33'; c.lineWidth=3; c.strokeRect(x,top,CAR_W,CAR_H);
+  c.fillStyle='#2a2d33'; c.fillRect(x+CAR_W/2-12,top-12,24,10);
+  c.fillStyle='#ffb43a'; c.font='bold 8px monospace'; c.textAlign='center'; c.fillText('▲ ♫', x+CAR_W/2, top-4);
 }
 function drawOpenUmbrella(c, H, flipped, st){
   const [hx,hy] = H, ux = hx-2, uy = hy-15;
@@ -663,7 +1004,7 @@ function drawOpenUmbrella(c, H, flipped, st){
 function render(ft){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle='#0c0c10'; ctx.fillRect(0,0,VW,VH);
-  const P = S.p, k = screenOf(P.y), sec = sectionOf(k), oy = (k+1)*SH;
+  const P = S.p, E = S.easy, k = screenOf(E ? E.y : P.y), sec = sectionOf(k), oy = (k+1)*SH;
   ctx.setTransform(DPR*GS,0,0,DPR*GS,DPR*OX,DPR*OY);
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,SW,SH); ctx.clip();
   drawBG(k, sec);
@@ -671,6 +1012,12 @@ function render(ft){
   for (const r of RECTS) if (!r.wall && r.y1 > top && r.y0 < bot) drawRect(r, oy, sectionOf(Math.max(0,r.k)));
   ctx.fillStyle='rgba(78,52,24,.85)';
   for (const s of stains) if (s.y>top && s.y<bot){ ctx.beginPath(); ctx.ellipse(s.x, s.y+oy+1, s.r, 3, 0, 0, 7); ctx.fill(); }
+  if (OPTS.cp && !E) for (const r of RECTS) if (r.cp && r.y1>top && r.y0<bot){ // checkpoint flags
+    const fx = r.x0+6, fy = r.y0+oy, on = r===S.cp;
+    ctx.strokeStyle='#ddd'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(fx,fy); ctx.lineTo(fx,fy-26); ctx.stroke();
+    ctx.fillStyle = on ? '#3fbf5a' : 'rgba(255,255,255,.6)';
+    ctx.beginPath(); ctx.moveTo(fx,fy-26); ctx.lineTo(fx+15,fy-22+Math.sin(T*5+fx)*2); ctx.lineTo(fx,fy-17); ctx.fill();
+  }
   // wind streaks
   const wb = SCREENS[k].wind, gust = gustAt(T,k);
   if (wb){
@@ -693,11 +1040,25 @@ function render(ft){
     ctx.stroke();
   }
   // player
-  const ps = {
-    x:P.x, y:P.y+oy, facing:S.facing, ground:S.onGround, charge:Math.min(1,S.charge/CMAX), glide:S.glide,
+  const ps = E ? {x:E.x, y:E.y+oy, facing:E.face, ground:true, charge:0, glide:0, pose:E.pose, cry:true, hit:0} : {
+    x:P.x, y:P.y+oy, facing:S.facing, ground:S.onGround, charge:Math.min(1,S.charge/CMAX), glide:S.glide, hit:S.hitT,
     pose: S.stun>0 ? 'splat' : S.charging ? 'charge' : !S.onGround ? (P.vy<0?'rise':'fall') : Math.abs(P.vx)>5 ? 'walk' : 'idle',
   };
-  drawPlayer(ctx, ps, WEAR, T);
+  if (E){
+    if (E.ph==='cry'){ ctx.fillStyle='rgba(110,170,255,.5)'; ctx.beginPath(); ctx.ellipse(E.x+PW/2, GROUND_Y+oy+1, Math.min(26,5+E.t*2.2), 2.5, 0, 0, 7); ctx.fill(); }
+    if (E.car) drawCar(ctx, CAR_X, E.floor+oy, E.door, 'back');
+    drawPlayer(ctx, ps, WEAR, T);
+    if (E.car) drawCar(ctx, CAR_X, E.floor+oy, E.door, 'front');
+    if (E.h) drawHelper(ctx, E.h, SUMMIT.y0+oy, T);
+    if (E.tr) drawTrophy(ctx, E.tr[0], E.tr[1]+oy, 1);
+    for (const p of E.conf){ ctx.save(); ctx.translate(p.x, p.y+oy); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-1.5,-2.5,3,5); ctx.restore(); }
+  } else drawPlayer(ctx, ps, WEAR, T);
+  // fall: red flash + "OW"
+  if (!E && S.hitT>1){ ctx.fillStyle=`rgba(200,20,30,${(S.hitT-1)*0.55})`; ctx.fillRect(0,0,SW,SH); }
+  ctx.textAlign='center'; ctx.font='bold 13px monospace'; ctx.lineWidth=3;
+  for (const p of S.pops){ const y=p.y+oy-(1.3-p.t)*30; ctx.globalAlpha=Math.min(1,p.t*2);
+    ctx.strokeStyle='#300'; ctx.strokeText(p.txt,p.x,y); ctx.fillStyle='#ff4040'; ctx.fillText(p.txt,p.x,y); }
+  ctx.globalAlpha=1;
   // lightning: white flash, then darkness where only you are visible
   if (S.flash>0){ ctx.fillStyle='rgba(255,255,255,.75)'; ctx.fillRect(0,0,SW,SH); }
   else if (S.dark>0){ ctx.fillStyle=`rgba(0,0,0,${Math.min(.93, S.dark*1.4)})`; ctx.fillRect(0,0,SW,SH); drawPlayer(ctx, ps, WEAR, T); }
@@ -709,15 +1070,19 @@ function render(ft){
 
   $('hud').textContent =
     `height ${Math.max(0,-(P.y+PH)/PX_PER_M).toFixed(1)} m\nbest   ${S.best.toFixed(1)} m\ntime   ${fmt(S.t)}\nfalls  ${S.falls}  (lifetime ${WEAR.falls})` +
+    (OPTS.cp ? `\nflags  ON · rescues ${S.cpUsed}` : '') +
     (isTouch ? '' : `\n\n[M] ${muted?'unmute':'mute'}`);
   updateAudio(sec);
 }
 
 // ---------- loop ----------
+reset();
 let last = performance.now(), acc = 0;
 function frame(now){
   const ft = Math.min(0.1, (now-last)/1000); last = now; acc += ft;
-  let n=0; while (acc >= DT && n++ < 12){ if (!S.won) step(DT); acc -= DT; }
+  let n=0; while (acc >= DT && n++ < 12){ if (!S.won && !S.easy && !S.paused) step(DT); acc -= DT; }
+  if (S.easy){ T += ft; easyUpdate(ft); }
+  for (const p of S.pops) p.t -= ft; S.pops = S.pops.filter(p=>p.t>0);
   if (sayT>0){ sayT-=ft; if (sayT<=0) $('say').style.opacity=0; }
   if (titleT>0){ titleT-=ft; if (titleT<=0) $('title').style.opacity=0; }
   render(ft);
